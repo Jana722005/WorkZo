@@ -22,10 +22,16 @@ const supabase = createClient(
   }
 );
 
-// Admin service-role client for backend privileged operations (bypassing RLS when necessary)
+const adminKey = (
+  env.SUPABASE_SERVICE_ROLE_KEY &&
+  !env.SUPABASE_SERVICE_ROLE_KEY.includes('your-supabase-service-role') &&
+  !env.SUPABASE_SERVICE_ROLE_KEY.includes('placeholder')
+) ? env.SUPABASE_SERVICE_ROLE_KEY : (env.SUPABASE_ANON_KEY || 'placeholder-anon-key');
+
+// Admin service-role client for backend operations
 const supabaseAdmin = createClient(
   env.SUPABASE_URL || 'https://placeholder.supabase.co',
-  env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || 'placeholder-service-key',
+  adminKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -34,8 +40,29 @@ const supabaseAdmin = createClient(
   }
 );
 
+// Factory function to create a user-scoped Supabase client that respects RLS policies
+const getUserClient = (token) => {
+  if (!token) return supabase;
+  return createClient(
+    env.SUPABASE_URL || 'https://placeholder.supabase.co',
+    env.SUPABASE_ANON_KEY || 'placeholder-anon-key',
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    }
+  );
+};
+
 module.exports = {
   supabase,
   supabaseAdmin,
+  getUserClient,
   isConfigured
 };

@@ -1,4 +1,4 @@
-const { supabase, supabaseAdmin } = require('../config/supabase');
+const { supabase, supabaseAdmin, getUserClient } = require('../config/supabase');
 
 /**
  * Authentication Middleware:
@@ -45,6 +45,8 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    req.token = token;
+    req.supabase = getUserClient(token);
     req.profile = profile || {
       id: user.id,
       email: user.email,
@@ -78,7 +80,33 @@ const authorize = (...roles) => {
   };
 };
 
+/**
+ * Optional Auth Middleware:
+ * If a valid Bearer token is provided, populates req.user; otherwise continues
+ */
+const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer ')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (token) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        req.user = user;
+        req.token = token;
+      }
+    }
+  } catch (_) {}
+  next();
+};
+
 module.exports = {
   protect,
-  authorize
+  authorize,
+  optionalAuth
 };

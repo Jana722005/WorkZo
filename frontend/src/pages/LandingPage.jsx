@@ -1,30 +1,81 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
-  Search, 
   MapPin, 
   Building2, 
   ArrowRight, 
   CheckCircle2, 
   Users,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 export default function LandingPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const location = useLocation();
 
-  const categories = ['All', 'Engineering', 'Design', 'Product', 'Marketing', 'Remote'];
+  // Scroll to section on hash change
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location]);
+
+  const featuredJobs = [
+    {
+      id: 1,
+      title: 'Senior Frontend Engineer',
+      company: 'Veloce Labs',
+      location: 'Remote',
+      salary: '$130k - $155k',
+      type: 'Full-time',
+      department: 'Engineering',
+      postedDate: '2 days ago'
+    },
+    {
+      id: 2,
+      title: 'Lead Product Designer',
+      company: 'NotionCraft',
+      location: 'San Francisco, CA',
+      salary: '$125k - $150k',
+      type: 'Full-time',
+      department: 'Design',
+      postedDate: '3 days ago'
+    },
+    {
+      id: 3,
+      title: 'Backend Systems Architect',
+      company: 'CloudScale Inc.',
+      location: 'Remote',
+      salary: '$145k - $175k',
+      type: 'Full-time',
+      department: 'Engineering',
+      postedDate: 'Just now'
+    }
+  ];
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+      window.history.pushState(null, '', `#${id}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-[#111827] flex flex-col font-sans">
       <Navbar />
 
       {/* Hero Section */}
-      <section id="search" className="relative pt-16 pb-20 px-6 overflow-hidden">
+      <section className="relative pt-20 pb-20 px-6 overflow-hidden">
         {/* Subtle Warm Orange & Soft Charcoal Ambient Splash */}
         <div 
           className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 -z-10 opacity-70 pointer-events-none rounded-b-3xl blur-2xl workzo-hero-gradient"
@@ -51,63 +102,104 @@ export default function LandingPage() {
             WORKZO connects ambitious candidates with verified employers. Clean, direct, and completely transparent.
           </p>
 
-          {/* Main Search Box */}
-          <div className="bg-white p-3 rounded-2xl border border-[#E5E7EB] shadow-xl max-w-3xl mx-auto hover:border-orange-200 transition-colors">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              
-              {/* Job Title / Keyword Input */}
-              <div className="flex items-center gap-3 px-3 py-2 w-full flex-1">
-                <Search className="w-5 h-5 text-[#71717A] shrink-0" />
-                <input 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Job title, keywords, or company..."
-                  className="w-full text-base text-[#111827] placeholder-[#71717A] outline-none bg-transparent"
-                />
-              </div>
+          {/* Hero Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+            <button
+              onClick={() => scrollTo('jobs')}
+              className="workzo-btn-primary w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md transition-all"
+            >
+              <span>Find Jobs</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => scrollTo('for-employers')}
+              className="workzo-btn-dark w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md transition-all"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>For Employers</span>
+            </button>
+          </div>
 
-              <div className="hidden sm:block w-[1px] h-8 bg-[#E5E7EB]" />
-
-              {/* Location Input */}
-              <div className="flex items-center gap-3 px-3 py-2 w-full sm:w-64">
-                <MapPin className="w-5 h-5 text-[#71717A] shrink-0" />
-                <input 
-                  type="text"
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  placeholder="City, state, or Remote"
-                  className="w-full text-base text-[#111827] placeholder-[#71717A] outline-none bg-transparent"
-                />
-              </div>
-
-              {/* Search Button */}
-              <button className="workzo-btn-primary w-full sm:w-auto px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shrink-0 cursor-pointer">
-                <span>Search Jobs</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
+          {/* Trust Highlights */}
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-[#71717A]">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>100% Verified Employers</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-orange-600" />
+              <span>Direct Applications</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500" />
+              <span>Fast-Track Response</span>
             </div>
           </div>
 
-          {/* Category Filter Chips */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
-            <span className="text-xs font-medium text-[#71717A] mr-2">Popular:</span>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-[#111827] text-white border-[#111827]'
-                    : 'bg-white text-[#71717A] border-[#E5E7EB] hover:border-orange-300 hover:text-orange-600'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+        </div>
+      </section>
+
+      {/* Featured Jobs Section */}
+      <section id="jobs" className="py-16 sm:py-20 px-6 bg-white scroll-mt-24 border-t border-[#E5E7EB]">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-600">Active Listings</span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[#111827] mt-1">
+                Featured Verified Jobs
+              </h2>
+              <p className="text-sm text-[#71717A] mt-1">
+                Explore handpicked verified opportunities available for immediate application.
+              </p>
+            </div>
+            <Link 
+              to="/jobs"
+              className="text-xs sm:text-sm font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <span>Explore all jobs</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredJobs.map((job) => (
+              <div 
+                key={job.id}
+                className="bg-[#FAFAF9] border border-[#E5E7EB] hover:border-orange-300 rounded-2xl p-6 transition-all hover:shadow-md flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-orange-100/70 text-orange-700 border border-orange-200/60">
+                      {job.department}
+                    </span>
+                    <span className="text-xs text-[#A1A1AA]">{job.postedDate}</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-[#111827] mb-1">{job.title}</h3>
+                  <p className="text-xs font-medium text-[#4B5563] mb-3">{job.company}</p>
+
+                  <div className="space-y-1.5 text-xs text-[#71717A] mb-6">
+                    <p className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{job.location}</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 font-semibold text-[#111827]">
+                      <span>{job.salary}</span>
+                      <span className="text-[#A1A1AA] font-normal">• {job.type}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  to="/register?role=candidate"
+                  className="workzo-btn-primary w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <span>Apply Now</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -134,7 +226,7 @@ export default function LandingPage() {
       </section>
 
       {/* Two Paths (Job Seeker vs Employer) */}
-      <section id="for-candidates" className="py-20 px-6 bg-white">
+      <section id="for-candidates" className="py-20 px-6 bg-white scroll-mt-24">
         <div className="max-w-6xl mx-auto">
           
           <div className="text-center max-w-2xl mx-auto mb-12">
@@ -188,7 +280,7 @@ export default function LandingPage() {
             </div>
 
             {/* Card 2: Employers */}
-            <div id="for-employers" className="bg-[#FAFAF9] border border-[#E5E7EB] rounded-3xl p-8 sm:p-10 hover:border-slate-400 hover:shadow-md transition-all flex flex-col justify-between">
+            <div id="for-employers" className="bg-[#FAFAF9] border border-[#E5E7EB] rounded-3xl p-8 sm:p-10 hover:border-slate-400 hover:shadow-md transition-all flex flex-col justify-between scroll-mt-24">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center mb-6 shadow-sm">
                   <Building2 className="w-6 h-6" />

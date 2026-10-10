@@ -9,8 +9,10 @@ import {
   Building2, 
   ArrowRight, 
   ArrowLeft, 
-  CheckCircle2 
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
+import api from '../lib/api';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -26,19 +28,57 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      setErrorMsg('Passwords do not match!');
       return;
     }
+
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
+      return;
+    }
+
     setIsLoading(true);
-    // Prepared for Supabase Auth integration in Step 4
-    setTimeout(() => {
+
+    try {
+      const response = await api.post('/auth/register', {
+        email,
+        password,
+        role,
+        fullName: role === 'candidate' ? fullName : undefined,
+        companyName: role === 'employer' ? companyName : undefined
+      });
+
+      if (response.data.success) {
+        if (response.data.session) {
+          localStorage.setItem('workzo_token', response.data.session.access_token);
+        }
+        if (response.data.user) {
+          localStorage.setItem('workzo_user', JSON.stringify(response.data.user));
+        }
+
+        const destinationRole = response.data.user?.role || role;
+        if (destinationRole === 'employer') {
+          navigate('/dashboard/employer');
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        setErrorMsg(response.data.message || 'Registration failed.');
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      const serverMsg = err.response?.data?.message || 'Registration failed. Please check inputs.';
+      setErrorMsg(serverMsg);
+    } finally {
       setIsLoading(false);
-      navigate(role === 'employer' ? '/dashboard/employer' : '/dashboard');
-    }, 500);
+    }
   };
 
   return (
@@ -127,6 +167,12 @@ export default function RegisterPage() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMsg && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
             
             {/* If Employer, show Company Name */}
             {role === 'employer' && (

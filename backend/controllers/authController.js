@@ -57,7 +57,7 @@ const register = async (req, res) => {
       });
     }
 
-    // 3. Ensure profile record is created in profiles table
+    // 3. Ensure profile record is created in profiles table for shared identity
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -73,19 +73,56 @@ const register = async (req, res) => {
       console.warn('Profile upsert warning:', profileError.message);
     }
 
-    // 4. If employer, create initial company entity if none exists
-    if (assignedRole === 'employer') {
-      const { error: companyError } = await supabaseAdmin
-        .from('companies')
-        .insert({
-          owner_id: user.id,
-          name: companyName || displayName || 'My Company',
-          contact_email: user.email,
-          contact_person: displayName
-        });
+    // 4. Populate separate tables: job_seekers for candidates, employers for employers
+    if (assignedRole === 'candidate') {
+      try {
+        await supabaseAdmin
+          .from('job_seekers')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: displayName,
+            created_at: new Date().toISOString()
+          });
+      } catch (err) {
+        console.warn('job_seekers table insert notice:', err.message);
+      }
+    } else if (assignedRole === 'employer') {
+      let createdCompanyId = null;
+      try {
+        const { data: companyData, error: companyError } = await supabaseAdmin
+          .from('companies')
+          .insert({
+            owner_id: user.id,
+            name: companyName || displayName || 'My Company',
+            contact_email: user.email,
+            contact_person: displayName
+          })
+          .select('id')
+          .single();
 
-      if (companyError) {
-        console.warn('Company creation warning:', companyError.message);
+        if (companyError) {
+          console.warn('Company creation warning:', companyError.message);
+        } else {
+          createdCompanyId = companyData?.id || null;
+        }
+      } catch (err) {
+        console.warn('Company creation exception:', err.message);
+      }
+
+      try {
+        await supabaseAdmin
+          .from('employers')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: displayName,
+            company_name: companyName || displayName || 'My Company',
+            company_id: createdCompanyId,
+            created_at: new Date().toISOString()
+          });
+      } catch (err) {
+        console.warn('employers table insert notice:', err.message);
       }
     }
 
@@ -154,9 +191,9 @@ const login = async (req, res) => {
       .eq('id', user.id)
       .single();
 
-    // Fallback if profile row is missing
+    // Fallback if profile row is missing in profiles table
     if (!profile) {
-      const fallbackRole = role || user.user_metadata?.role || 'candidate';
+      const fallbackRole = user.user_metadata?.role || role || 'candidate';
       const fallbackName = user.user_metadata?.full_name || '';
       
       const { data: createdProfile } = await supabaseAdmin
@@ -176,6 +213,32 @@ const login = async (req, res) => {
         role: fallbackRole,
         full_name: fallbackName
       };
+    }
+
+    const registeredRole = (profile?.role || user.user_metadata?.role || 'candidate').toLowerCase();
+    const requestedRole = (role || '').toLowerCase();
+
+    // STRICT ROLE VERIFICATION:
+    // If client specified a target login role (e.g. 'employer' or 'candidate'),
+    // ensure the registered user profile matches this role.
+    if (requestedRole && registeredRole !== requestedRole) {
+      // Invalidate the session on mismatch to prevent session leak
+      try {
+        await supabase.auth.signOut();
+      } catch (_) {}
+
+      const requestedLabel = requestedRole === 'employer' ? 'Employer' : 'Job Seeker';
+      const registeredLabel = registeredRole === 'employer' ? 'Employer' : 'Job Seeker';
+
+      console.warn(`⚠️ [Auth Role Mismatch]: User ${email} attempted to log in as '${requestedLabel}' but is registered as '${registeredLabel}'`);
+
+      return res.status(403).json({
+        success: false,
+        code: 'ROLE_MISMATCH',
+        actualRole: registeredRole,
+        requestedRole: requestedRole,
+        message: `Account type mismatch: This account is registered as a ${registeredLabel}, not an ${requestedLabel}. Please switch to the ${registeredLabel} login tab.`
+      });
     }
 
     return res.status(200).json({

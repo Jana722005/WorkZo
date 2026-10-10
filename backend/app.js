@@ -1,7 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const env = require('./config/env');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const verificationRoutes = require('./routes/verificationRoutes');
 
 const app = express();
 
@@ -49,8 +53,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 5. Mount Core API Routes
+// 5. Mount Core API Routes & Static Assets
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/verification', verificationRoutes);
 
 // 6. 404 Route Handler
 app.use((req, res) => {

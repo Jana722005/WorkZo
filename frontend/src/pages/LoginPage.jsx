@@ -8,8 +8,10 @@ import {
   ArrowRight, 
   Building2, 
   Users, 
-  ArrowLeft 
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
+import api from '../lib/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,15 +24,66 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [mismatchTarget, setMismatchTarget] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setErrorMsg('');
+    setMismatchTarget(null);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Prepared for Supabase Auth integration in Step 4
-    setTimeout(() => {
+    setErrorMsg('');
+    setMismatchTarget(null);
+
+    try {
+      const response = await api.post('/auth/login', {
+        email: email.trim(),
+        password,
+        role
+      });
+
+      if (response.data.success && response.data.session) {
+        const returnedUser = response.data.user;
+        const returnedRole = (returnedUser?.role || '').toLowerCase();
+
+        // Enforce strict client-side role consistency guard
+        if (returnedRole && returnedRole !== role.toLowerCase()) {
+          const registeredLabel = returnedRole === 'employer' ? 'Employer' : 'Job Seeker';
+          const currentLabel = role === 'employer' ? 'Employer' : 'Job Seeker';
+          setErrorMsg(`Account type mismatch: This account is registered as a ${registeredLabel}, not an ${currentLabel}. Please switch to the ${registeredLabel} login tab.`);
+          setMismatchTarget(returnedRole);
+          return;
+        }
+
+        localStorage.setItem('workzo_token', response.data.session.access_token);
+        localStorage.setItem('workzo_user', JSON.stringify(returnedUser));
+        
+        if (role === 'employer') {
+          navigate('/dashboard/employer');
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        setErrorMsg(response.data.message || 'Login failed. Please check credentials.');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      const data = err.response?.data;
+      if (data?.code === 'ROLE_MISMATCH') {
+        const target = data.actualRole || (role === 'employer' ? 'candidate' : 'employer');
+        setMismatchTarget(target);
+        setErrorMsg(data.message || 'Account role mismatch. Please switch to the matching login tab.');
+      } else {
+        setMismatchTarget(null);
+        setErrorMsg(data?.message || 'Login failed. Please check your email and password.');
+      }
+    } finally {
       setIsLoading(false);
-      navigate(role === 'employer' ? '/dashboard/employer' : '/dashboard');
-    }, 400);
+    }
   };
 
   return (
@@ -82,7 +135,7 @@ export default function LoginPage() {
           <div className="p-1.5 bg-[#F4F4F5] rounded-2xl border border-[#E5E7EB] flex items-center gap-1.5 mb-6">
             <button
               type="button"
-              onClick={() => setRole('candidate')}
+              onClick={() => handleRoleChange('candidate')}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
                 role === 'candidate' 
                   ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-xs ring-1 ring-orange-200/80' 
@@ -95,7 +148,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => setRole('employer')}
+              onClick={() => handleRoleChange('employer')}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 ${
                 role === 'employer' 
                   ? 'bg-[#111827] text-white border-[#111827] shadow-xs ring-1 ring-slate-900/30' 
@@ -109,6 +162,43 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errorMsg && (
+              <div className={`p-4 rounded-2xl border text-xs ${
+                mismatchTarget
+                  ? 'bg-amber-50/95 border-amber-300 text-amber-900 shadow-2xs'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                    mismatchTarget ? 'text-amber-600' : 'text-red-600'
+                  }`} />
+                  <div className="flex-1">
+                    {mismatchTarget && (
+                      <p className="font-bold text-amber-950 uppercase tracking-wider text-[10px] mb-0.5">
+                        Account Role Mismatch
+                      </p>
+                    )}
+                    <span className="font-medium leading-relaxed">{errorMsg}</span>
+                  </div>
+                </div>
+
+                {mismatchTarget && (
+                  <div className="mt-3 pt-2.5 border-t border-amber-200/80 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[11px] text-amber-800 font-semibold">
+                      Account Type: <strong>{mismatchTarget === 'employer' ? 'Employer' : 'Job Seeker'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRoleChange(mismatchTarget)}
+                      className="px-3 py-1.5 rounded-xl bg-[#111827] hover:bg-black text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <span>Switch to {mismatchTarget === 'employer' ? 'Employer' : 'Job Seeker'} Tab</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Email Field */}
             <div>
